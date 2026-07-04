@@ -1,0 +1,37 @@
+# .gitignore for PhotoSort AI
+
+# Python virtual environment
+backend/.venv/
+
+# Python cache
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+
+# HuggingFace model cache (large, re-downloaded automatically)
+backend/.cache/
+~/.cache/huggingface/
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs
+*.log
+
+# Sorted output (user-generated, should not be committed)
+*/sorted/

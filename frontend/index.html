@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PhotoSort — Portrait & Landscape Classifier</title>
+  <meta name="description" content="Sort portrait and landscape photos automatically using local AI. No internet required." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- ══════════════════════════════════════
+       SCREEN 1 — PICK FOLDER
+  ══════════════════════════════════════ -->
+  <div class="screen active" id="screen-pick">
+    <header class="topbar">
+      <span class="brand">PhotoSort</span>
+      <div class="status-dot-wrap" id="serverPill">
+        <span class="status-dot"></span>
+        <span class="status-txt">Connecting</span>
+      </div>
+    </header>
+
+    <main class="pick-main">
+      <div class="pick-content">
+        <h1 class="pick-heading">Sort your photos</h1>
+        <p class="pick-desc">Automatically separates portrait photos from landscapes using local AI. No internet, no uploads.</p>
+
+        <!-- Primary action -->
+        <button class="pick-folder-btn" id="pickBtn" onclick="pickFolder()">
+          <svg class="folder-icon" width="20" height="20" viewBox="0 0 20 20" fill="none">
+            <path d="M2 6a2 2 0 012-2h3.586a1 1 0 01.707.293L9.707 5.707A1 1 0 0010.414 6H16a2 2 0 012 2v7a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
+          </svg>
+          Choose folder…
+        </button>
+
+        <!-- Selected folder display -->
+        <div class="selected-folder hidden" id="selectedFolder">
+          <div class="selected-folder-inner">
+            <svg width="16" height="16" viewBox="0 0 20 20" fill="none">
+              <path d="M2 6a2 2 0 012-2h3.586a1 1 0 01.707.293L9.707 5.707A1 1 0 0010.414 6H16a2 2 0 012 2v7a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
+            </svg>
+            <span class="selected-path" id="selectedPath"></span>
+            <button class="change-btn" onclick="pickFolder()">Change</button>
+          </div>
+        </div>
+
+        <!-- Manual path input -->
+        <div class="divider-row"><span class="divider-txt">or enter path manually</span></div>
+        <div class="manual-row">
+          <input type="text" id="folderPath" class="path-input" placeholder="C:\Users\you\Pictures or /Users/you/Pictures" autocomplete="off" />
+          <button class="use-btn" onclick="useManualPath()">Use</button>
+        </div>
+
+        <!-- Start button -->
+        <button class="start-btn hidden" id="startBtn" onclick="goClassify()">
+          Start classifying
+          <svg width="16" height="16" viewBox="0 0 20 20" fill="none">
+            <path d="M4 10h12M10 4l6 6-6 6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
+
+        <!-- Info strip -->
+        <ul class="info-list">
+          <li>Runs entirely on your computer — no data leaves your machine</li>
+          <li>Originals are never moved or deleted, only copied</li>
+          <li>Works on Mac and Windows</li>
+        </ul>
+      </div>
+    </main>
+  </div>
+
+  <!-- ══════════════════════════════════════
+       SCREEN 2 — PROGRESS
+  ══════════════════════════════════════ -->
+  <div class="screen" id="screen-progress">
+    <header class="topbar">
+      <span class="brand">PhotoSort</span>
+    </header>
+    <main class="prog-main">
+      <div class="prog-content">
+        <div class="prog-numbers">
+          <span class="prog-pct" id="progPct">0%</span>
+          <span class="prog-fraction" id="progFraction">0 of 0</span>
+        </div>
+
+        <div class="prog-bar-wrap">
+          <div class="prog-bar" id="progBar" style="width:0%"></div>
+        </div>
+
+        <p class="prog-filename" id="progFilename">Starting…</p>
+
+        <div class="prog-tally">
+          <div class="tally-cell">
+            <span class="tally-n" id="tPortrait">0</span>
+            <span class="tally-l">Portraits</span>
+          </div>
+          <div class="tally-sep"></div>
+          <div class="tally-cell">
+            <span class="tally-n" id="tLandscape">0</span>
+            <span class="tally-l">Landscapes</span>
+          </div>
+          <div class="tally-sep"></div>
+          <div class="tally-cell">
+            <span class="tally-n" id="tUncertain">0</span>
+            <span class="tally-l">Uncertain</span>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- ══════════════════════════════════════
+       SCREEN 3 — RESULTS
+  ══════════════════════════════════════ -->
+  <div class="screen" id="screen-results">
+    <header class="topbar results-topbar">
+      <button class="back-btn" onclick="goBack()">
+        <svg width="16" height="16" viewBox="0 0 20 20" fill="none">
+          <path d="M16 10H4M10 16l-6-6 6-6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        Back
+      </button>
+
+      <nav class="tab-nav">
+        <button class="tab active" id="tab-all" onclick="setTab('all')">All <span class="tab-n" id="n-all">0</span></button>
+        <button class="tab" id="tab-portrait" onclick="setTab('portrait')">Portraits <span class="tab-n" id="n-portrait">0</span></button>
+        <button class="tab" id="tab-landscape" onclick="setTab('landscape')">Landscapes <span class="tab-n" id="n-landscape">0</span></button>
+        <button class="tab" id="tab-uncertain" onclick="setTab('uncertain')">Uncertain <span class="tab-n" id="n-uncertain">0</span></button>
+      </nav>
+
+      <div class="results-actions">
+        <label class="thresh-label">
+          Threshold <strong id="threshDisplay">65%</strong>
+          <input type="range" class="thresh-slider" id="threshSlider" min="10" max="95" value="65" step="5"
+            oninput="onThreshold(this.value)" />
+        </label>
+        <button class="copy-btn" id="copyBtn" onclick="doSort()">Copy to folders</button>
+      </div>
+    </header>
+
+    <div class="photo-grid" id="photoGrid"></div>
+  </div>
+
+  <!-- ══════════════════════════════════════
+       DONE MODAL
+  ══════════════════════════════════════ -->
+  <div class="modal-backdrop hidden" id="doneModal">
+    <div class="modal">
+      <h2 class="modal-title">Done</h2>
+      <p class="modal-body" id="doneBody"></p>
+      <p class="modal-path" id="donePath"></p>
+      <div class="modal-actions">
+        <button class="modal-btn-primary" onclick="closeModal()">View results</button>
+        <button class="modal-btn-secondary" onclick="goBack()">Sort another folder</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Lightbox -->
+  <div class="lightbox hidden" id="lightbox" onclick="closeLightbox()">
+    <div class="lb-box" onclick="event.stopPropagation()">
+      <button class="lb-close" onclick="closeLightbox()">✕</button>
+      <img class="lb-img" id="lbImg" src="" alt="" />
+      <div class="lb-info" id="lbInfo"></div>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div class="toast hidden" id="toast"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>
