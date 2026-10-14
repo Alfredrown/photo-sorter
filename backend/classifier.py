@@ -16,10 +16,14 @@ from pathlib import Path
 IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".heic", ".heif", ".webp", ".bmp", ".tiff", ".tif"}
 
 # ---------------------------------------------------------------------------
-# Text prompts — carefully crafted to distinguish intentional portraits
-# from landscapes/scenes that may incidentally contain people.
+# Text prompts — broad coverage helps CLIP handle varied photo styles.
 # ---------------------------------------------------------------------------
-PORTRAIT_PROMPTS = [
+TARGET_PROMPTS_PER_CATEGORY = 250
+PORTRAIT_THRESHOLD = 0.53
+TEMPERATURE = 12.0
+PORTRAIT_BIAS = 0.0
+
+PORTRAIT_SEED_PROMPTS = [
     "a portrait photo of a person",
     "a close-up photo of a person's face",
     "a selfie of a person",
@@ -36,7 +40,7 @@ PORTRAIT_PROMPTS = [
     "a family portrait photo",
 ]
 
-LANDSCAPE_PROMPTS = [
+LANDSCAPE_SEED_PROMPTS = [
     "a landscape photo of nature or scenery",
     "a photo of a city street or building",
     "a scenic photo without people as the main subject",
@@ -49,8 +53,63 @@ LANDSCAPE_PROMPTS = [
     "a product photo or still life photo",
 ]
 
-TEMPERATURE = 12.0
-PORTRAIT_BIAS = 0.018
+PORTRAIT_SUBJECTS = [
+    "one person", "a person", "a woman", "a man", "a child", "a couple", "a family",
+    "a group of people", "friends", "a model", "a bride", "a groom", "an athlete",
+    "a musician", "a dancer", "a student", "an artist", "a worker", "a traveler",
+    "someone smiling", "someone posing", "someone looking at the camera",
+    "someone standing", "someone sitting", "someone walking",
+]
+
+PORTRAIT_CONTEXTS = [
+    "close-up portrait", "headshot", "selfie", "upper body portrait",
+    "full body portrait", "candid portrait", "studio portrait", "street portrait",
+    "event portrait", "wedding portrait", "fashion portrait", "family portrait",
+    "group portrait", "profile portrait", "environmental portrait", "formal portrait",
+    "casual portrait", "graduation portrait", "travel portrait", "fitness portrait",
+]
+
+LANDSCAPE_SUBJECTS = [
+    "mountains", "forest", "beach", "ocean", "lake", "river", "waterfall", "desert",
+    "field", "garden", "park", "city skyline", "street", "building", "bridge",
+    "interior room", "restaurant", "food", "product", "vehicle", "animal", "sky",
+    "sunset", "snow", "architecture",
+]
+
+LANDSCAPE_CONTEXTS = [
+    "landscape photo", "scenic travel photo", "wide outdoor scene", "nature photo",
+    "city photo", "architecture photo", "street scene", "interior photo",
+    "still life photo", "product photo", "food photo", "object photo",
+    "documentary scene", "empty place photo", "tourist location photo",
+    "scenery-focused photo", "background-focused photo", "environment photo",
+    "wide angle photo", "location photo",
+]
+
+PHOTO_STYLES = [
+    "natural light", "bright daylight", "soft light", "indoor light", "low light",
+    "warm light", "cool light", "high contrast", "shallow depth of field",
+    "sharp focus", "phone camera", "professional camera", "vertical photo",
+    "horizontal photo", "square crop",
+]
+
+
+def _build_prompt_set(seed_prompts: list[str], subjects: list[str], contexts: list[str], target: int) -> list[str]:
+    prompts = list(dict.fromkeys(seed_prompts))
+    for context in contexts:
+        for subject in subjects:
+            for style in PHOTO_STYLES:
+                prompts.append(f"a {style} {context} of {subject}")
+                if len(prompts) >= target:
+                    return prompts[:target]
+    return prompts[:target]
+
+
+PORTRAIT_PROMPTS = _build_prompt_set(
+    PORTRAIT_SEED_PROMPTS, PORTRAIT_SUBJECTS, PORTRAIT_CONTEXTS, TARGET_PROMPTS_PER_CATEGORY
+)
+LANDSCAPE_PROMPTS = _build_prompt_set(
+    LANDSCAPE_SEED_PROMPTS, LANDSCAPE_SUBJECTS, LANDSCAPE_CONTEXTS, TARGET_PROMPTS_PER_CATEGORY
+)
 
 
 class PhotoClassifier:
@@ -157,7 +216,7 @@ class PhotoClassifier:
         portrait_prob = probs[0].item()
         landscape_prob = probs[1].item()
 
-        if portrait_prob >= landscape_prob:
+        if portrait_prob >= PORTRAIT_THRESHOLD:
             label = "portrait"
             confidence = portrait_prob
         else:
